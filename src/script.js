@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { Inspector } from 'three/addons/inspector/Inspector.js'
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { pass, uv, vec2 } from 'three/tsl'
+import { mrt, normalWorld, output, pass, uv, vec2, vec4 } from 'three/tsl'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { chromaticAberration } from 'three/addons/tsl/display/ChromaticAberrationNode.js'
 import { pixelationPass } from 'three/addons/tsl/display/PixelationPassNode.js'
@@ -107,17 +107,21 @@ const renderPipeline = new THREE.RenderPipeline(renderer)
 const postProcessingGui = renderer.inspector.createParameters('Post-processing')
 
 // Scene pass
-// const scenePass = pass(scene, camera)
-// renderPipeline.outputNode = scenePass
+const scenePass = pass(scene, camera)
+scenePass.setMRT(mrt({
+    output: output, // reference node corresponding to the material output
+    normal: normalWorld
+}))
+renderPipeline.outputNode = scenePass.getTextureNode('output')
 
 // Pixelation Pass
-const pixelationPassOutput = pixelationPass(scene, camera, 1, 2, 1)
-renderPipeline.outputNode = pixelationPassOutput
+// const pixelationPassOutput = pixelationPass(scene, camera, 1, 2, 1)
+// renderPipeline.outputNode = pixelationPassOutput
 
-const pixelGui = postProcessingGui.addFolder('pixel')
-pixelGui.add(pixelationPassOutput, 'pixelSize', 1, 20, 1).name('pixelSize')
-pixelGui.add(pixelationPassOutput , 'normalEdgeStrength', 0, 2, 0.01).name('normalEdgeStrength')
-pixelGui.add(pixelationPassOutput , 'depthEdgeStrength', 0, 1, 0.01).name('depthEdgeStrength')
+// const pixelGui = postProcessingGui.addFolder('pixel')
+// pixelGui.add(pixelationPassOutput, 'pixelSize', 1, 20, 1).name('pixelSize')
+// pixelGui.add(pixelationPassOutput , 'normalEdgeStrength', 0, 2, 0.01).name('normalEdgeStrength')
+// pixelGui.add(pixelationPassOutput , 'depthEdgeStrength', 0, 1, 0.01).name('depthEdgeStrength')
 
 // Bloom pass
 const bloomPass = bloom(renderPipeline.outputNode)
@@ -134,7 +138,7 @@ const chromaticAberrationPass = chromaticAberration(renderPipeline.outputNode, 2
 renderPipeline.outputNode = chromaticAberrationPass
 
 // Sobel pass
-const sobelPass = sobel(renderPipeline.outputNode)
+const sobelPass = sobel(scenePass.getTextureNode('normal')).pow(2)
 renderPipeline.outputNode = renderPipeline.outputNode.add(sobelPass)
 
 
@@ -148,6 +152,10 @@ renderPipeline.outputNode = renderPipeline.outputNode.add(sobelPass)
         new THREE.PlaneGeometry(10, 10),
         new THREE.MeshStandardNodeMaterial({ map: texture, transparent: true })
     )
+    mesh.material.mrtNode = mrt({
+        output: output,
+        normal: vec4(1)
+    })
     mesh.material.opacityNode = uv().sub(0.5).length().smoothstep(0.5, 0.2)
     mesh.rotation.x = - Math.PI * 0.5
     mesh.receiveShadow = true
@@ -175,6 +183,10 @@ scene.add(model.scene)
  * Sky
  */
 const sky = new SkyMesh()
+sky.material.mrtNode = mrt({
+    output: output,
+    normal: vec4(1)
+})
 sky.scale.setScalar(1000)
 scene.add(sky)
 const effectController = {
