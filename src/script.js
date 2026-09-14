@@ -7,6 +7,7 @@ import { pass, uv, vec2 } from 'three/tsl'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { chromaticAberration } from 'three/addons/tsl/display/ChromaticAberrationNode.js'
 import { pixelationPass } from 'three/addons/tsl/display/PixelationPassNode.js'
+import { sobel } from 'three/addons/tsl/display/SobelOperatorNode.js'
 
 
 /**
@@ -131,6 +132,10 @@ bloomGui.add(bloomPass.strength, 'value', 0, 2, 0.01).name('strenght')
 // Chromatic aberration pass
 const chromaticAberrationPass = chromaticAberration(renderPipeline.outputNode, 2, vec2(0.5), 1)
 renderPipeline.outputNode = chromaticAberrationPass
+
+// Sobel pass
+const sobelPass = sobel(renderPipeline.outputNode)
+renderPipeline.outputNode = renderPipeline.outputNode.add(sobelPass)
 
 
 /**
