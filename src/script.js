@@ -3,11 +3,12 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { Inspector } from 'three/addons/inspector/Inspector.js'
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { mrt, normalWorld, output, pass, uv, vec2, vec4 } from 'three/tsl'
+import { mrt, normalWorld, output, pass, renderOutput, uv, vec2, vec3, vec4 } from 'three/tsl'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { chromaticAberration } from 'three/addons/tsl/display/ChromaticAberrationNode.js'
 import { pixelationPass } from 'three/addons/tsl/display/PixelationPassNode.js'
 import { sobel } from 'three/addons/tsl/display/SobelOperatorNode.js'
+import { fxaa } from 'three/addons/tsl/display/FXAANode.js'
 
 
 /**
@@ -66,7 +67,7 @@ controls.enableDamping = true
  */
 const renderer = new THREE.WebGPURenderer({
     canvas: canvas,
-    antialias: true
+    antialias: false
 })
 const toneMappingList = {
     None: THREE.NoToneMapping,
@@ -102,6 +103,7 @@ rendererGui
     Post processing
 */
 const renderPipeline = new THREE.RenderPipeline(renderer)
+renderPipeline.outputColorTransform = false
 
 // Debug
 const postProcessingGui = renderer.inspector.createParameters('Post-processing')
@@ -123,23 +125,30 @@ renderPipeline.outputNode = scenePass.getTextureNode('output')
 // pixelGui.add(pixelationPassOutput , 'normalEdgeStrength', 0, 2, 0.01).name('normalEdgeStrength')
 // pixelGui.add(pixelationPassOutput , 'depthEdgeStrength', 0, 1, 0.01).name('depthEdgeStrength')
 
-// Bloom pass
-const bloomPass = bloom(renderPipeline.outputNode)
-bloomPass.threshold.value = 0.25
-bloomPass.strength.value = 1
-renderPipeline.outputNode = renderPipeline.outputNode.add(bloomPass)
+// // Bloom pass
+// const bloomPass = bloom(renderPipeline.outputNode)
+// bloomPass.threshold.value = 0.25
+// bloomPass.strength.value = 1
+// renderPipeline.outputNode = renderPipeline.outputNode.add(bloomPass)
 
-const bloomGui = postProcessingGui.addFolder('bloom')
-bloomGui.add(bloomPass.threshold, 'value', 0, 1, 0.01).name('threshold')
-bloomGui.add(bloomPass.strength, 'value', 0, 2, 0.01).name('strenght')
+// const bloomGui = postProcessingGui.addFolder('bloom')
+// bloomGui.add(bloomPass.threshold, 'value', 0, 1, 0.01).name('threshold')
+// bloomGui.add(bloomPass.strength, 'value', 0, 2, 0.01).name('strenght')
 
-// Chromatic aberration pass
-const chromaticAberrationPass = chromaticAberration(renderPipeline.outputNode, 2, vec2(0.5), 1)
-renderPipeline.outputNode = chromaticAberrationPass
+// // Chromatic aberration pass
+// const chromaticAberrationPass = chromaticAberration(renderPipeline.outputNode, 2, vec2(0.5), 1)
+// renderPipeline.outputNode = chromaticAberrationPass
 
 // Sobel pass
 const sobelPass = sobel(scenePass.getTextureNode('normal')).pow(2)
 renderPipeline.outputNode = renderPipeline.outputNode.add(sobelPass)
+
+// Color transform pass
+renderPipeline.outputNode = renderOutput(renderPipeline.outputNode)
+
+// FXAA pass
+const fxaaPass = fxaa(renderPipeline.outputNode)
+renderPipeline.outputNode = fxaaPass
 
 
 /**
@@ -157,6 +166,7 @@ renderPipeline.outputNode = renderPipeline.outputNode.add(sobelPass)
         normal: vec4(1)
     })
     mesh.material.opacityNode = uv().sub(0.5).length().smoothstep(0.5, 0.2)
+    // mesh.material.colorNode = vec3(uv().x.mul(10).fract().step(0.5))
     mesh.rotation.x = - Math.PI * 0.5
     mesh.receiveShadow = true
     scene.add(mesh)
