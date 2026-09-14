@@ -106,8 +106,17 @@ const renderPipeline = new THREE.RenderPipeline(renderer)
 const postProcessingGui = renderer.inspector.createParameters('Post-processing')
 
 // Scene pass
-const scenePass = pass(scene, camera)
-renderPipeline.outputNode = scenePass
+// const scenePass = pass(scene, camera)
+// renderPipeline.outputNode = scenePass
+
+// Pixelation Pass
+const pixelationPassOutput = pixelationPass(scene, camera, 1, 2, 1)
+renderPipeline.outputNode = pixelationPassOutput
+
+const pixelGui = postProcessingGui.addFolder('pixel')
+pixelGui.add(pixelationPassOutput, 'pixelSize', 1, 20, 1).name('pixelSize')
+pixelGui.add(pixelationPassOutput , 'normalEdgeStrength', 0, 2, 0.01).name('normalEdgeStrength')
+pixelGui.add(pixelationPassOutput , 'depthEdgeStrength', 0, 1, 0.01).name('depthEdgeStrength')
 
 // Bloom pass
 const bloomPass = bloom(renderPipeline.outputNode)
@@ -123,7 +132,6 @@ bloomGui.add(bloomPass.strength, 'value', 0, 2, 0.01).name('strenght')
 const chromaticAberrationPass = chromaticAberration(renderPipeline.outputNode, 2, vec2(0.5), 1)
 renderPipeline.outputNode = chromaticAberrationPass
 
-// Pixelation Pass
 
 /**
  * Floor
