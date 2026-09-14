@@ -3,9 +3,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { Inspector } from 'three/addons/inspector/Inspector.js'
 import { SkyMesh } from 'three/addons/objects/SkyMesh.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { pass, uv } from 'three/tsl'
+import { pass, uv, vec2 } from 'three/tsl'
 import { bloom } from 'three/addons/tsl/display/BloomNode.js'
 import { chromaticAberration } from 'three/addons/tsl/display/ChromaticAberrationNode.js'
+import { pixelationPass } from 'three/addons/tsl/display/PixelationPassNode.js'
 
 
 /**
@@ -112,11 +113,17 @@ renderPipeline.outputNode = scenePass
 const bloomPass = bloom(renderPipeline.outputNode)
 bloomPass.threshold.value = 0.25
 bloomPass.strength.value = 1
-renderPipeline.outputNode = scenePass.add(bloomPass)
+renderPipeline.outputNode = renderPipeline.outputNode.add(bloomPass)
 
 const bloomGui = postProcessingGui.addFolder('bloom')
 bloomGui.add(bloomPass.threshold, 'value', 0, 1, 0.01).name('threshold')
 bloomGui.add(bloomPass.strength, 'value', 0, 2, 0.01).name('strenght')
+
+// Chromatic aberration pass
+const chromaticAberrationPass = chromaticAberration(renderPipeline.outputNode, 2, vec2(0.5), 1)
+renderPipeline.outputNode = chromaticAberrationPass
+
+// Pixelation Pass
 
 /**
  * Floor
